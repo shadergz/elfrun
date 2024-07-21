@@ -4,7 +4,7 @@
 #include <unistd.h>
 
 #include <linkable_format.h>
-int main(const int argc, char** argv) {
+int main(int argc, char** argv) {
     if (argc < 2)
         exit(argc);
 

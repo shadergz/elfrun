@@ -2,6 +2,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <print>
+#include <utility>
 
 #include <sys/stat.h>
 #include <sys/mman.h>
@@ -26,7 +27,7 @@ namespace elfrun {
         stringTable = {mapped + strSection.sh_offset, strSection.sh_size};
     }
 
-    void LinkableFormat::link([[maybe_unused]] i32 argc, char **argv) {
+    void LinkableFormat::link([[maybe_unused]] i32& argc, char** argv) {
         const std::string interpreter{getInterpreter()};
         if (!interpreter.empty()) {
             throw std::runtime_error{"Cannot deal dynamic linked executable"};
@@ -43,20 +44,39 @@ namespace elfrun {
 
         std::println("Binary entry point located at: {}", entry);
 
-        argv[0] = argv[1];
+        argc--;
+        i32 args{1};
+        for (; args <= argc; ++args) {
+            argv[args - 1] = std::exchange(argv[args], nullptr);
+        }
     }
 
     void LinkableFormat::jump(i32 argc, char** argv) const {
         // Let's use our program's stack
         auto rsp{reinterpret_cast<u64>(&argv[0]) - 0x8};
         u64 pc{(entry)};
+
         __asm(
             "mov %0, %%rsp;"
+            "xor %%rbp, %%rbp;"
             "xor %%rax, %%rax;"
             "xor %%rbx, %%rbx;"
-            "jmp *%1;"
+            "xor %%rcx, %%rcx;"
+            // "xor %%rdx, %%rdx;"
+            // "xor %%rsi, %%rsi;"
+            // "xor %%rdi, %%rdi;"
+            "xor %%r10, %%r10;"
+            "xor %%r11, %%r11;"
+            "xor %%r12, %%r12;"
+            "xor %%r13, %%r13;"
+            "xor %%r14, %%r14;"
+            "xor %%r15, %%r15;"
 
-            :: "r"(rsp), "r" (pc)
+            "xor %%r8, %%r8;"
+            "xor %%r9, %%r9;"
+
+            "jmp *%1;"
+            :: "r"(rsp), "r" (pc), "r" (argc), "r" (argv)
         );
 
         std::println("Return passed back to the loader");

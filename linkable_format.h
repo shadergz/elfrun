@@ -15,7 +15,7 @@ namespace elfrun {
     public:
         LinkableFormat() = default;
         void load(i32 fd);
-        void link(i32 argc, char** argv);
+        void link(i32& argc, char** argv);
         void jump(i32 argc, char** argv) const;
         ~LinkableFormat();
 
