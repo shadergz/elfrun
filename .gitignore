@@ -1,2 +1,4 @@
 .idea/
 cmake-build-debug
+tests/main
+tests/main.o
