@@ -14,7 +14,7 @@ namespace elfrun {
 
         const auto mapped{static_cast<char*>(mmap(nullptr, status.st_size, PROT_READ, MAP_PRIVATE, fd, 0))};
         if (mapped == MAP_FAILED)
-            throw std::runtime_error("mmap failed");
+            throw std::runtime_error("mmap() failed");
 
         mappedElf = {reinterpret_cast<u8*>(mapped), static_cast<long unsigned int>(status.st_size)};
         std::memcpy(&header, mapped, sizeof(header));
@@ -31,17 +31,17 @@ namespace elfrun {
         if (!interpreter.empty()) {
             throw std::runtime_error{"Cannot deal dynamic linked executable"};
         }
+        std::println("Loading the ELF binary into memory");
 
         for (const auto& header : programHeaders) {
             if (header.p_type == PT_LOAD) {
                 mapExecutable(header);
             }
         }
-
         if (!entry)
             throw std::runtime_error("The entry point of the binary was not successfully loaded");
 
-        std::print("Binary entry point located at: {}", entry);
+        std::println("Binary entry point located at: {}", entry);
 
         argv[0] = argv[1];
     }
@@ -52,14 +52,14 @@ namespace elfrun {
         u64 pc{(entry)};
         __asm(
             "mov %0, %%rsp;"
-            "xor rax, rax;"
-            "xor rbx, rbx"
-            "mov %1, %%rpc"
+            "xor %%rax, %%rax;"
+            "xor %%rbx, %%rbx;"
+            "jmp *%1;"
 
             :: "r"(rsp), "r" (pc)
         );
 
-        std::print("Return passed back to the loader");
+        std::println("Return passed back to the loader");
     }
 
     LinkableFormat::~LinkableFormat() {
@@ -88,28 +88,31 @@ namespace elfrun {
 
     void LinkableFormat::mapExecutable(const Elf64_Phdr& header) {
         u64 minAddr{std::min(header.p_vaddr, static_cast<decltype(minAddr)>(-1))};
-        u64 maxAddr{std::max(header.p_vaddr + header.p_memsz, static_cast<decltype(maxAddr)>(-1))};
+        u64 maxAddr{std::max(header.p_vaddr + header.p_memsz, static_cast<decltype(maxAddr)>(0))};
 
         const u64 mapStart{pageRoundDown(minAddr)};
         const u64 mapSz{pageRoundUp(maxAddr - mapStart)};
-        const auto program{mmap(reinterpret_cast<void*>(mapStart), mapSz,
-            PROT_READ | PROT_WRITE | PROT_EXEC,
-            MAP_SHARED | MAP_ANONYMOUS, -1, 0)};
-        if (program == MAP_FAILED) {
-            throw std::runtime_error("mmap failed");
+        const auto program{mmap(reinterpret_cast<void*>(minAddr), mapSz,
+            PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED | MAP_ANONYMOUS | MAP_FIXED, -1, 0)};
+        if (reinterpret_cast<u64>(program) != header.p_vaddr) {
+
         }
-        std::print(
-            ".rodata, .data, .text, and .bss sections mapped "
+
+        if (program == MAP_FAILED)
+            throw std::runtime_error("mmap failed");
+
+        if (mapStart == pageRoundDown(this->header.e_entry)) {
+            entry = this->header.e_entry;
+        }
+        std::println(".rodata, .data, .text, and .bss sections mapped "
             "at memory address: {}", mapStart);
 
         // header.p_vaddr should now be mapped correctly in memory
-        std::memcpy(reinterpret_cast<void*>(header.p_vaddr), &mappedElf[0] + header.p_offset, header.p_memsz);
+        std::memcpy(program, &mappedElf[0] + header.p_offset, header.p_memsz);
 
         if (header.p_memsz > header.p_filesz) {
             // Clearing the .bss section of the binary
-            std::memset(reinterpret_cast<void*>(header.p_vaddr + header.p_filesz), 0, header.p_filesz);
+            std::memset(static_cast<char*>(program) + header.p_filesz, 0, header.p_filesz);
         }
-
-        entry = this->header.e_entry;
     }
 }

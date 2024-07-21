@@ -11,6 +11,7 @@ namespace elfrun {
     constexpr auto PT_INTERP{3};
     constexpr auto PT_LOAD{1};
 
+#pragma pack(push, 1)
     typedef struct {
         unsigned char e_ident[16]; /* ELF identification */
         Elf64_Half e_type; /* Object file type */
@@ -51,5 +52,6 @@ namespace elfrun {
         Elf64_Xword sh_addralign; /* Address alignment boundary */
         Elf64_Xword sh_entsize; /* Size of entries, if section has table */
     } Elf64_Shdr;
+#pragma pack(pop)
 }
 
