@@ -21,7 +21,7 @@ namespace elfrun {
 
     private:
         [[nodiscard]] std::string_view getInterpreter() const;
-        void mapExecutable(const Elf64_Phdr& header);
+        void mapSection(const Elf64_Phdr& header);
 
         Status status{};
         std::span<u8> mappedElf;

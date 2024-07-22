@@ -36,7 +36,7 @@ namespace elfrun {
 
         for (const auto& header : programHeaders) {
             if (header.p_type == PT_LOAD) {
-                mapExecutable(header);
+                mapSection(header);
             }
         }
         if (!entry)
@@ -45,8 +45,7 @@ namespace elfrun {
         std::println("Binary entry point located at: {}", entry);
 
         argc--;
-        i32 args{1};
-        for (; args <= argc; ++args) {
+        for (i32 args{1}; args <= argc; ++args) {
             argv[args - 1] = std::exchange(argv[args], nullptr);
         }
     }
@@ -56,7 +55,7 @@ namespace elfrun {
         auto rsp{reinterpret_cast<u64>(&argv[0]) - 0x8};
         u64 pc{(entry)};
 
-        __asm(
+        __asm volatile(
             "mov %0, %%rsp;"
             "xor %%rbp, %%rbp;"
             "xor %%rax, %%rax;"
@@ -106,7 +105,7 @@ namespace elfrun {
         return (address + 4096 - 1) & ~(4096 - 1);
     }
 
-    void LinkableFormat::mapExecutable(const Elf64_Phdr& header) {
+    void LinkableFormat::mapSection(const Elf64_Phdr& header) {
         u64 minAddr{std::min(header.p_vaddr, static_cast<decltype(minAddr)>(-1))};
         u64 maxAddr{std::max(header.p_vaddr + header.p_memsz, static_cast<decltype(maxAddr)>(0))};
 
@@ -124,8 +123,7 @@ namespace elfrun {
         if (mapStart == pageRoundDown(this->header.e_entry)) {
             entry = this->header.e_entry;
         }
-        std::println(".rodata, .data, .text, and .bss sections mapped "
-            "at memory address: {}", mapStart);
+        std::println(".rodata, .data, .text, and .bss sections mapped at memory address: {}", mapStart);
 
         // header.p_vaddr should now be mapped correctly in memory
         std::memcpy(program, &mappedElf[0] + header.p_offset, header.p_memsz);

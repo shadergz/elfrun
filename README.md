@@ -6,5 +6,5 @@ The binaries may not have or need external libraries to function with 100% accur
 No symbols are resolved at runtime - Only the binary is mapped into memory
 
 ### To build the test binary
-- gcc -O2 -c main.c -o main.o
+- gcc -O1 -c main.c -o main.o
 - ld -static -o main main.o
